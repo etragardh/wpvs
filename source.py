@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import date
-import os, re, requests
+import os, re, requests, time
 from cprint import CPrint
 from cache import Cache
 
@@ -60,7 +60,13 @@ class VSourceBase(ABC):
     # Object    = Cached resp
     cache = Cache(url, debug = self.debug)
     if not cache:
+      time.sleep(1)
       resp = requests.get(url)
+      # TODO: rate limit detection does not work ??
+      if resp and resp.status_code == 429:
+        p.warn('Hitting WP.org rate limit, waiting 60s')
+        time.sleep(60)
+        resp = requests.get(url)
       cache.save(resp)
     else:
       resp = cache

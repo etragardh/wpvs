@@ -35,8 +35,8 @@ class VSource(VSourceBase):
         continue
 
       #CVSS
-      if vuln['cvss']['score'] < kwargs['cvss_min'] or \
-        vuln['cvss']['score'] > kwargs['cvss_max']:
+      if vuln['cvss']['score'] < float(kwargs['cvss_min']) or \
+        vuln['cvss']['score'] > float(kwargs['cvss_max']):
         p.vvv('C', prefix="=>")
         continue
 
@@ -46,7 +46,7 @@ class VSource(VSourceBase):
         continue
 
       # Type
-      if kwargs['type'] and not self.get_type(vuln) != kwargs['type']:
+      if kwargs['type'] and self.get_type(vuln) != kwargs['type']:
         p.vvv('E', prefix="=>")
         continue
 
@@ -122,15 +122,15 @@ class VSource(VSourceBase):
       if string in vuln['cwe']['name'] or string in vuln['title']:
         return mapper[string]
 
-    return vuln['cwe']['name']
+    return 'other' # vuln['cwe']['name']
 
   def is_unauth(self, vuln):
     p.vvv('looking for unath: ', prefix='>')
-    if "unauthenticated" in vuln['title']:
+    if "unauthenticated" in vuln['title'].lower():
       p.vvv('>> A')
       return True
 
-    if "authenticated" in vuln['title']:
+    if "authenticated" in vuln['title'].lower():
       p.vvv('>> B')
       return False
 
