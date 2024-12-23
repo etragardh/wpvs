@@ -45,6 +45,7 @@ Example output:
 + lift out some heavy loading from sources/mysource.py to source.py
 + add info about firewalls (ie v-patch exists, WF firewall rule free/premium)
 + add codecanyon as a source
++ merge same vuln from different sources
 
 <br />
 Stay nice!
