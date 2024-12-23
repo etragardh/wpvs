@@ -124,6 +124,10 @@ class VSource(VSourceBase):
       "Privilege Escalation":       'PRIVESC',
       "Post Disclosure":            'DATALEAK', # Patchstack from here and down
       "Arbitrary File Download":    'FILEDL',
+      "Arbitrary Shortcode Execution":'ARBSHCODE',
+      "Arbitrary File Upload":      'RFI',
+      "Arbitrary Directory Deletion": 'ARBDDEL',
+      "Arbitrary User Token Generation": 'AUTHBP',
     }
 
     for string in mapper:
