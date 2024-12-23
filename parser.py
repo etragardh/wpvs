@@ -47,6 +47,11 @@ class parser:
             help='Search specific plugin and/or theme'
         )
         parser.add_argument(
+            '--purge',
+            action='store_true',
+            help='Purge cache'
+        )
+        parser.add_argument(
             '-d', '--debug',
             default=0,
             nargs='?',

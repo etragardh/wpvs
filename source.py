@@ -61,12 +61,14 @@ class VSourceBase(ABC):
     cache = Cache(url, debug = self.debug)
     if not cache:
       time.sleep(1)
-      resp = requests.get(url)
-      # TODO: rate limit detection does not work ??
-      if resp and resp.status_code == 429:
-        p.warn('Hitting WP.org rate limit, waiting 60s')
+      headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.1'
+      }
+      resp = requests.get(url, headers=headers, timeout=10)
+      if resp.status_code == 429:
+        print('Hitting WP.org rate limit, waiting 60s')
         time.sleep(60)
-        resp = requests.get(url)
+        resp = requests.get(url, headers=headers, timeout=10)
       cache.save(resp)
     else:
       resp = cache
