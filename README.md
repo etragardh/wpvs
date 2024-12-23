@@ -46,6 +46,8 @@ Example output:
 + add info about firewalls (ie v-patch exists, WF firewall rule free/premium)
 + add codecanyon as a source
 + merge same vuln from different sources
++ feature: describe a specific vulnerability
++ list multiple vulnerability types, now only single/one at a time
 
 <br />
 Stay nice!
