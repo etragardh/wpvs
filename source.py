@@ -66,7 +66,7 @@ class VSourceBase(ABC):
       }
       resp = requests.get(url, headers=headers, timeout=10)
       if resp.status_code == 429:
-        print('Hitting WP.org rate limit, waiting 60s')
+        p.warn('Hitting WP.org rate limit, waiting 60s')
         time.sleep(60)
         resp = requests.get(url, headers=headers, timeout=10)
       cache.save(resp)
