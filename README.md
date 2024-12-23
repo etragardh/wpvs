@@ -21,6 +21,19 @@ pip install -r requirements.txt
 ./wpvs --debug
 ```
 
+Example output:
+```
+./wpvs --cvss-min 9.8 --age 5
+| Slug                          | Vuln    |   CVSS | .org   | Inst   | Pub        | Auth   | Source   |
+|-------------------------------+---------+--------+--------+--------+------------+--------+----------|
+| adforest                      | AUTHBP  |    9.8 | no     | ?      | 2024-12-21 | no     | PS       |
+| ssl-wireless-sms-notification | PRIVESC |    9.8 | yes    | 60+    | 2024-12-19 | no     | PS       |
+| newsletter-page-redirects     | PRIVESC |    9.8 | yes    | N/A    | 2024-12-19 | no     | PS       |
+| simple-dashboard              | PRIVESC |    9.8 | yes    | N/A    | 2024-12-19 | no     | PS       |
+| store-locator                 | RFI     |    9.8 | yes    | N/A    | 2024-12-19 | no     | WF       |
+| adforest                      | AUTHBP  |    9.8 | no     | ?      | 2024-12-20 | no     | WF       |
+```
+
 ## Vulnerability Sources
 + wordfence.com (vulnerability api)
 + patchstack.com (web crawler)
