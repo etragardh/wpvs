@@ -28,7 +28,9 @@ class VSource(VSourceBase):
 
       # Date / Age
       if kwargs['age'] and self.is_old(vuln, kwargs['age']):
-        p.vvv('A', prefix="=>")
+        p.vvv('A', kwargs['age'], prefix="=>")
+        p.vvv(self.is_old(vuln, kwargs['age']))
+        p.vvv(vuln)
         continue
       
       # Slug (Plugin / Theme)
@@ -165,6 +167,7 @@ class VSource(VSourceBase):
 
       # STEP: Get vuln data
 
+      ps_data = {}
       keep_going = True
       page = 0
       while keep_going:
@@ -191,13 +194,12 @@ class VSource(VSourceBase):
         ps_html = ps_json['html']
 
         vulns_html = ps_html.split('</a>')
-        vulns = {}
         for vuln_html in alive_it(vulns_html):
           vuln = self.extract_vuln(vuln_html)
           if vuln:
             p.vv('Found vuln:' + vuln['slug'])
             p.vvv('Vuln id:' + vuln['id'])
-            vulns[vuln['id']] = vuln
+            ps_data[vuln['id']] = vuln
 
           else:
             p.vvv('No vuln found')
@@ -206,7 +208,7 @@ class VSource(VSourceBase):
           keep_going = False
 
       with open(self.db_path, 'w+') as fp:
-        fp.write(json.dumps(vulns))
+        fp.write(json.dumps(ps_data))
         p.v('Database updated')
 
   def extract_vuln(self, html):
