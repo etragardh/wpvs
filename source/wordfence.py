@@ -1,6 +1,7 @@
+import requests, json, re, time
 from source import VSourceBase
 from datetime import date, timedelta, datetime
-import requests, json, re
+from alive_progress import alive_bar
 from cprint import CPrint
 p = CPrint()
 
@@ -20,7 +21,11 @@ class VSource(VSourceBase):
       data = json.load(fp)
 
     hits = []
+    #i = 0
+    #count = len(data)
     for vid in data:
+      #i += 1
+
       vuln = data[vid]
       p.vvv(vuln['title'])
 
@@ -51,6 +56,8 @@ class VSource(VSourceBase):
         continue
 
       p.vvv('Adding: ' + vuln['title'])
+      #progress = i / count * 100
+      #p.progress(progress)
       hits.append(vuln)
 
     return self.format_resp(hits)
@@ -70,25 +77,27 @@ class VSource(VSourceBase):
 
   def format_resp(self, hits):
     out = []
-    for hit in hits:
-      fullname = hit['software'][0]['name']
-      name = fullname[:20].rstrip() + '..'if len(fullname) > 20 else fullname
+    with alive_bar(len(hits), enrich_print=False) as bar:
+      for hit in hits:
+        fullname = hit['software'][0]['name']
+        name = fullname[:20].rstrip() + '..'if len(fullname) > 20 else fullname
 
-      fullslug = hit['software'][0]['slug']
-      slug = fullslug[:30].rstrip() + '..' if len(fullslug) > 30 else fullslug          
+        fullslug = hit['software'][0]['slug']
+        slug = fullslug[:30].rstrip() + '..' if len(fullslug) > 30 else fullslug          
 
-      vuln = self.get_type(hit)
+        vuln = self.get_type(hit)
 
-      out.append([
-        slug,
-        vuln,
-        hit['cvss']['score'],
-        'yes' if self.dot_org(fullslug) else 'no',
-        self.dot_org(fullslug) if self.dot_org(fullslug) else '?',
-        hit['published'][:10],
-        'no' if self.is_unauth(hit) else 'yes',
-        'WF',
-        ])
+        out.append([
+          slug,
+          vuln,
+          hit['cvss']['score'],
+          'yes' if self.dot_org(fullslug) else 'no',
+          self.dot_org(fullslug) if self.dot_org(fullslug) else '?',
+          hit['published'][:10],
+          'no' if self.is_unauth(hit) else 'yes',
+          'WF',
+          ])
+        bar()
 
     return out
 
