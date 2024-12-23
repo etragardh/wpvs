@@ -154,7 +154,7 @@ class VSource(VSourceBase):
 
   # No Cache
   def update_db(self):
-    p.v('Updating Wordfence databse')
+    p.info('Updating Wordfence databse')
     resp = requests.get('https://wordfence.com/api/intelligence/v2/vulnerabilities/production') 
     if resp and resp.status_code == 200:
       with open(self.db_path, 'w+') as fp:

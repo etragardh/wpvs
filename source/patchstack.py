@@ -1,8 +1,9 @@
-import requests, json, re, time
+import requests, json, re, time, hashlib
 from source import VSourceBase
 from datetime import date, timedelta, datetime
-from alive_progress import alive_bar
+from alive_progress import alive_bar, alive_it
 from cprint import CPrint
+from cache import Cache
 p = CPrint()
 
 # Patchstack 
@@ -23,7 +24,7 @@ class VSource(VSourceBase):
     hits = []
     for vid in data:
       vuln = data[vid]
-      p.vvv(vuln['title'])
+      p.vvv("PS:" + vuln['title'])
 
       # Date / Age
       if kwargs['age'] and self.is_old(vuln, kwargs['age']):
@@ -31,13 +32,13 @@ class VSource(VSourceBase):
         continue
       
       # Slug (Plugin / Theme)
-      if kwargs['slug'] and vuln['software'][0]['slug'] != kwargs['slug']:
+      if kwargs['slug'] and vuln['slug'] != kwargs['slug']:
         p.vvv('B', prefix="=>")
         continue
 
       #CVSS
-      if vuln['cvss']['score'] < float(kwargs['cvss_min']) or \
-        vuln['cvss']['score'] > float(kwargs['cvss_max']):
+      if vuln['cvss'] < float(kwargs['cvss_min']) or \
+        vuln['cvss'] > float(kwargs['cvss_max']):
         p.vvv('C', prefix="=>")
         continue
 
@@ -64,7 +65,7 @@ class VSource(VSourceBase):
     delta = timedelta(days = int(age))
     accepted = today - delta
 
-    if datetime.strptime(vuln['published'][:10], '%Y-%m-%d').date() > accepted:
+    if datetime.strptime(vuln['date'][:10], '%Y-%m-%d').date() > accepted:
       return False
     else:
       return True
@@ -73,10 +74,10 @@ class VSource(VSourceBase):
     out = []
     with alive_bar(len(hits), enrich_print=False) as bar:
       for hit in hits:
-        fullname = hit['software'][0]['name']
+        fullname = hit['name']
         name = fullname[:20].rstrip() + '..'if len(fullname) > 20 else fullname
 
-        fullslug = hit['software'][0]['slug']
+        fullslug = hit['slug']
         slug = fullslug[:30].rstrip() + '..' if len(fullslug) > 30 else fullslug          
 
         vuln = self.get_type(hit)
@@ -84,12 +85,12 @@ class VSource(VSourceBase):
         out.append([
           slug,
           vuln,
-          hit['cvss']['score'],
+          hit['cvss'],
           'yes' if self.dot_org(fullslug) else 'no',
           self.dot_org(fullslug) if self.dot_org(fullslug) else '?',
-          hit['published'][:10],
+          hit['date'][:10],
           'no' if self.is_unauth(hit) else 'yes',
-          'WF',
+          'PS',
           ])
         bar()
 
@@ -119,13 +120,15 @@ class VSource(VSourceBase):
       "Object Injection":           'OBJINJ',
       "Arbitrary Option Update":    'OPTUPD',
       "Privilege Escalation":       'PRIVESC',
+      "Post Disclosure":            'DATALEAK', # Patchstack from here and down
+      "Arbitrary File Download":    'FILEDL',
     }
 
     for string in mapper:
-      if string in vuln['cwe']['name'] or string in vuln['title']:
+      if string.lower() in vuln['title'].lower():
         return mapper[string]
 
-    return 'other' # vuln['cwe']['name']
+    return vuln['title'] #'other' # vuln['cwe']['name']
 
   def is_unauth(self, vuln):
     p.vvv('looking for unath: ', prefix='>')
@@ -148,15 +151,17 @@ class VSource(VSourceBase):
 
   # No Cache
   def update_db(self):
-    p.v('Updating Patchstack databse')
+    p.info('Updating Patchstack databse')
     # STEP: Get _token and hash
 
     with requests.Session() as s:
+      p.vvv("Getting PS tokens and hashes")
       resp = s.get('https://patchstack.com/database')
       token = re.search('name="_token" value="(.*?)"', resp.text)
       token = token.group(1)
       ps_hash = re.search("hash: '(.*?)'", resp.text)
       ps_hash = ps_hash.group(1)
+      p.vvv(token, ps_hash)
 
       # STEP: Get vuln data
 
@@ -179,6 +184,7 @@ class VSource(VSourceBase):
           'page':       page,
           'hash':       ps_hash
         }
+        p.vv(f'Grabbing PS page {page}')
         resp = s.post('https://patchstack.com/database/open-source/vulnerabilities/search', data=data)
 
         ps_json = json.loads(resp.text)
@@ -186,19 +192,27 @@ class VSource(VSourceBase):
 
         vulns_html = ps_html.split('</a>')
         vulns = {}
-        for vuln_html in vulns_html:
+        for vuln_html in alive_it(vulns_html):
           vuln = self.extract_vuln(vuln_html)
           if vuln:
+            p.vv('Found vuln:' + vuln['slug'])
+            p.vvv('Vuln id:' + vuln['id'])
             vulns[vuln['id']] = vuln
 
-        # Only do 1 for debug
-        keep_going = False
+          else:
+            p.vvv('No vuln found')
+
+        if page >= 10:
+          keep_going = False
 
       with open(self.db_path, 'w+') as fp:
         fp.write(json.dumps(vulns))
         p.v('Database updated')
 
   def extract_vuln(self, html):
+    if "a href" not in html:
+      return False
+
     try:
       out = {
         'link': re.search('<a href="(.*?)"', html).group(1),
@@ -206,7 +220,7 @@ class VSource(VSourceBase):
         'name': re.search('db-row__name-text">(.*?)<', html).group(1),
         'version': re.search('db-row__version--inline">(.*?)<', html).group(1),
         'desc': re.search('db-row__desc">(.*?)<', html).group(1),
-        'cvss': re.search(r'db-row__score(.*?)>(.*?)([0-9]\.?[0-9]?)(.*?)<', html, re.DOTALL).group(3),
+        'cvss': float(re.search(r'db-row__score(.*?)>(.*?)([0-9]\.?[0-9]?)(.*?)<', html, re.DOTALL).group(3)),
         'date': re.search('db-row__date">(.*?)<', html).group(1),
       }
 
@@ -221,12 +235,22 @@ class VSource(VSourceBase):
       out['date'] = self.real_date(out['date'])
 
       # CVE
-      resp = requests.get(out['link'])
-      print(resp.text)
-      exit()
+      cache = Cache(out['link'])
+      if cache:
+        resp = cache
+      else:
+        resp = requests.get(out['link'])
+        cache.save(resp)
+
+      out['cve'] = re.search('CVE-(.*?)"', resp.text).group(1)
+
+      # ID
+      out['id'] = self.hash(out['cve'])
+      p.vv(out['id'])
 
       return out
-    except:
+    except Exception as e:
+      p.v('Error in exctraction', html, e)
       return False
 
   def real_date(self, date_str):
@@ -240,3 +264,5 @@ class VSource(VSourceBase):
     delta = timedelta(days=days)
     real_date = today - delta
     return str(real_date)[:10]
+  def hash(self, input_string):
+    return hashlib.md5(input_string.encode()).hexdigest()

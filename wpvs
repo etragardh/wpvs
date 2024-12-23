@@ -33,7 +33,7 @@ out = []
 # Search
 try:
   for source in os.listdir('source/'):
-    if source in ['__pycache__'] or source.endswith('.swp'):
+    if source in ['__pycache__'] or source.endswith('.swp') or source.endswith('.bak'):
       continue
     p.v(f'loading: {source}')
     sm  = SourceFileLoader("Source Module",f'source/{source}').load_module()
