@@ -23,13 +23,15 @@ pip install -r requirements.txt
 
 ## Vulnerability Sources
 + wordfence.com (vulnerability api)
-+ Patchstack.com (web crawler)
++ patchstack.com (web crawler)
++ wordpress.org (installations, downloads etc)
 
 ## TODO
 + Add support for cve-info
 + rewrite with sqlite database
 + lift out some heavy loading from sources/mysource.py to source.py
 + add info about firewalls (ie v-patch exists, WF firewall rule free/premium)
++ add codecanyon as a source
 
 <br />
 Stay nice!
