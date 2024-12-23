@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+#
+# TODO:
+# make a central SourceManager to control sources
+# Individual Sources handle their respectively raw databases
+# wpvs should build its own central DB
+#
+
 from importlib.machinery import SourceFileLoader
 from threading import Thread
 from queue import Queue
