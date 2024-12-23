@@ -48,6 +48,8 @@ Example output:
 + merge same vuln from different sources
 + feature: describe a specific vulnerability
 + list multiple vulnerability types, now only single/one at a time
++ add versions (vulnerable, fixed in, no fix etc)
++ add info if known to be exploited
 
 <br />
 Stay nice!
