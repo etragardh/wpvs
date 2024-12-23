@@ -5,9 +5,9 @@ from alive_progress import alive_bar
 from cprint import CPrint
 p = CPrint()
 
-# Wordfence
+# Patchstack 
 class VSource(VSourceBase):
-  db_path = 'db/wordfence.json'
+  db_path = 'db/patchstack.json'
 
   def __init__(self, debug = False):
     super().__init__(debug)
@@ -21,11 +21,7 @@ class VSource(VSourceBase):
       data = json.load(fp)
 
     hits = []
-    #i = 0
-    #count = len(data)
     for vid in data:
-      #i += 1
-
       vuln = data[vid]
       p.vvv(vuln['title'])
 
@@ -56,8 +52,6 @@ class VSource(VSourceBase):
         continue
 
       p.vvv('Adding: ' + vuln['title'])
-      #progress = i / count * 100
-      #p.progress(progress)
       hits.append(vuln)
 
     return self.format_resp(hits)
@@ -154,12 +148,95 @@ class VSource(VSourceBase):
 
   # No Cache
   def update_db(self):
-    p.v('Updating Wordfence databse')
-    resp = requests.get('https://wordfence.com/api/intelligence/v2/vulnerabilities/production') 
-    if resp and resp.status_code == 200:
-      with open(self.db_path, 'w+') as fp:
-        fp.write(resp.text)
-        p.v('Database updatad')
+    p.v('Updating Patchstack databse')
+    # STEP: Get _token and hash
 
+    with requests.Session() as s:
+      resp = s.get('https://patchstack.com/database')
+      token = re.search('name="_token" value="(.*?)"', resp.text)
+      token = token.group(1)
+      ps_hash = re.search("hash: '(.*?)'", resp.text)
+      ps_hash = ps_hash.group(1)
+
+      # STEP: Get vuln data
+
+      keep_going = True
+      page = 0
+      while keep_going:
+        page += 1
+        headers = {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.1'
+        }
+        data = {
+          'search':     '',
+          'cat':        '',
+          'range1':     '0',
+          'range2':     '10',
+          'types[]':    '0',
+          'vpatch':     'false',
+          'exploited':  'false',
+          '_token':     token,
+          'page':       page,
+          'hash':       ps_hash
+        }
+        resp = s.post('https://patchstack.com/database/open-source/vulnerabilities/search', data=data)
+
+        ps_json = json.loads(resp.text)
+        ps_html = ps_json['html']
+
+        vulns_html = ps_html.split('</a>')
+        vulns = {}
+        for vuln_html in vulns_html:
+          vuln = self.extract_vuln(vuln_html)
+          if vuln:
+            vulns[vuln['id']] = vuln
+
+        # Only do 1 for debug
+        keep_going = False
+
+      with open(self.db_path, 'w+') as fp:
+        fp.write(json.dumps(vulns))
+        p.v('Database updated')
+
+  def extract_vuln(self, html):
+    try:
+      out = {
+        'link': re.search('<a href="(.*?)"', html).group(1),
+        'type': re.search('db-row__type">(.*?)<', html).group(1).lower(),
+        'name': re.search('db-row__name-text">(.*?)<', html).group(1),
+        'version': re.search('db-row__version--inline">(.*?)<', html).group(1),
+        'desc': re.search('db-row__desc">(.*?)<', html).group(1),
+        'cvss': re.search(r'db-row__score(.*?)>(.*?)([0-9]\.?[0-9]?)(.*?)<', html, re.DOTALL).group(3),
+        'date': re.search('db-row__date">(.*?)<', html).group(1),
+      }
+
+      # Slug
+      regex = f'database/wordpress/{out["type"]}/(.*?)/vulnerability'
+      out['slug'] = re.search(regex, html).group(1)
+
+      # Title
+      out['title'] = out['name'] + ' ' + out['desc']
+
+      # Date
+      out['date'] = self.real_date(out['date'])
+
+      # CVE
+      resp = requests.get(out['link'])
+      print(resp.text)
+      exit()
+
+      return out
+    except:
+      return False
+
+  def real_date(self, date_str):
+    # 8 days ago -> 2024-12-10
+    today = date.today()
+    if "hour" in date_str:
+      days = 0
     else:
-      p.error('Database update failed')
+      days = int(re.search('([0-9]{1,3})', date_str).group(1))
+
+    delta = timedelta(days=days)
+    real_date = today - delta
+    return str(real_date)[:10]
