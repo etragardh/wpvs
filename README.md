@@ -21,5 +21,15 @@ pip install -r requirements.txt
 ./wpvs --debug
 ```
 
+## Vulnerability Sources
++ wordfence.com (vulnerability api)
++ Patchstack.com (web crawler)
+
+## TODO
++ Add support for cve-info
++ rewrite with sqlite database
++ lift out some heavy loading from sources/mysource.py to source.py
++ add info about firewalls (ie v-patch exists, WF firewall rule free/premium)
+
 <br />
 Stay nice!
