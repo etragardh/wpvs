@@ -45,6 +45,7 @@ Example output:
 + lift out some heavy loading from sources/mysource.py to source.py
 + add info about firewalls (ie v-patch exists, WF firewall rule free/premium)
 + add codecanyon as a source
++ add themeforest as a source
 + merge same vuln from different sources
 + feature: describe a specific vulnerability
 + list multiple vulnerability types, now only single/one at a time

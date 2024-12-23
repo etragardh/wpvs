@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import date
+from datetime import datetime, date, timedelta
 import os, re, requests, time
 from cprint import CPrint
 from cache import Cache
@@ -53,17 +53,24 @@ class VSourceBase(ABC):
 
     return today > accepted
 
-  def dot_org(self, slug, type='plugin'):
-    url = f'https://wordpress.org/{type}s/{slug}'
+  def repo_info(self, slug, name, type='plugin'):
+    out = {
+      'repo':       'unknown',
+      'installs':   '-',
+      'downloads':  '-'
+    }
+    headers = {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.1'
+    }
+    # ==============================
+    # STEP: wordpress.org
+    url = f'https://wordpress.org/{type}s/{slug}/'
 
     # False     = We dont have cache
     # Object    = Cached resp
     cache = Cache(url, debug = self.debug)
     if not cache:
       time.sleep(1)
-      headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.1'
-      }
       resp = requests.get(url, headers=headers, timeout=10)
       if resp.status_code == 429:
         p.warn('Hitting WP.org rate limit, waiting 60s')
@@ -77,9 +84,144 @@ class VSourceBase(ABC):
       # This might be a dot org plugin/theme
       installs = re.search('Active installations(.*?)<strong>(.*?)</strong>', resp.text)
       if installs:
-        return installs.group(2)
+        out['repo']     = 'wp.org'
+        out['installs'] = installs.group(2)
 
-    # It was not
-    return False
+        # ==============================
+        # STEP: wordpress.org/stats api
+        url = f'https://wordpress.org/{type}s/{slug}/advanced/'
+        url = f'https://api.wordpress.org/stats/plugin/1.0/downloads.php?slug={slug}&historical_summary=1&callback=test'
+
+        cache = Cache(url, debug = self.debug)
+        if not cache:
+          time.sleep(1)
+          resp = requests.get(url, headers=headers, timeout=10)
+          if resp.status_code == 429:
+            p.warn('Hitting WP.org rate limit, waiting 60s')
+            time.sleep(60)
+            resp = requests.get(url, headers=headers, timeout=10)
+          cache.save(resp)
+        else:
+          resp = cache
+
+        if resp and resp.status_code == 200:
+          downloads = re.search('all_time":"(.*?)"', resp.text)
+          if downloads:
+            out['downloads'] = "{:,}".format(int(downloads.group(1)))
 
 
+    # TODO: Continue here
+    # Does not work very well - but WF has links to codecanyon and theme forest in their texts on the website.
+
+    # STEP: Code Canyon
+    if out['repo'] == 'unknown':
+      name_slug = name.replace(' ', '-')
+      url = f'https://codecanyon.net/search/{name_slug}'
+      p.vv('Looking for canyons at', url, name_slug)
+
+      cache = Cache(url, debug = self.debug)
+      if not cache:
+        time.sleep(1)
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code == 429:
+          p.warn('Hitting codecanyon.com rate limit, waiting 60s')
+          time.sleep(60)
+          resp = requests.get(url, headers=headers, timeout=10)
+        cache.save(resp)
+      else:
+        resp = cache
+
+      if resp and resp.status_code == 200:
+        # This is the search result:
+        url = re.search('href="https://codecanyon.net/item/{name_slug}/(.*?)"', resp.text)
+        if not url:
+          return out 
+
+        cache = Cache(url, debug = self.debug)
+        if not cache:
+          time.sleep(1)
+          resp = requests.get(url, headers=headers, timeout=10)
+          if resp.status_code == 429:
+            p.warn('Hitting codecanyon.com rate limit, waiting 60s')
+            time.sleep(60)
+            resp = requests.get(url, headers=headers, timeout=10)
+          cache.save(resp)
+        else:
+          resp = cache
+
+        if resp and resp.status_code == 200:
+          out['repo'] = 'cc.com'
+          out['downloads'] = re.search('<strong>(.*?)</strong> sales', resp.text).group(1)
+
+    return out 
+
+  def get_type(self, haystack, default = 'other'):
+        
+    mapper = {
+      "SQL Injection":              'SQLi',
+      "Remote Code Execution":      'RCE',
+      "Code Injection":             'CODEINJ',
+      "Cross-site Scripting":       'XSS',
+      "XSS":                        'XSS',
+      "Cross-site Request Forgery": 'CSRF',
+      "CSRF":                       'CSRF',
+      "Server-Side Request Forgery":'SSRF',
+      "SSRF":                       'SSRF',
+      "Authorization Bypass":       'AUTHBP',
+      "Authentication Bypass":      'AUTHBP',
+      "Improper Authentication":    'AUTHBP',
+      "Improper Authorization":     'AUTHBP',
+      "Missing Authorization":      'AUTHBP',
+      "Missing Authentication":     'AUTHBP',
+      "Unrestricted Upload of File":'RFI',
+      "Remote File Inclusion":      'RFI',
+      "Local File Inclusion":       'LFI',
+      "Arbitrary Folder Deletion":  'LFD',
+      "Object Injection":           'OBJINJ',
+      "Arbitrary Option Update":    'OPTUPD',
+      "Privilege Escalation":       'PRIVESC',
+      "Post Disclosure":            'DATALEAK', # Patchstack from here and down
+      "Arbitrary File Download":    'FILEDL',
+      "Arbitrary Shortcode Execution":'ARBSHCODE',
+      "Arbitrary File Upload":      'RFI',
+      "Arbitrary Directory Deletion": 'ARBDDEL',
+      "Arbitrary User Token Generation": 'AUTHBP',
+    }
+
+    for string in mapper:
+      if string.lower() in haystack.lower():
+        return mapper[string]
+
+    return default #vuln['title'] #'other' # vuln['cwe']['name']
+
+  def is_unauth(self, haystack):
+    p.vvv('looking for unath: ', prefix='>')
+    if "unauthenticated" in haystack.lower():
+      p.vvv('>> A')
+      return True
+
+    if "authenticated" in haystack.lower():
+      p.vvv('>> B')
+      return False
+
+    user = re.search(r'(subscriber|customer|contributor|editor|administrator)\+',
+      haystack.lower())
+    if user:
+      p.vvv('>> C')
+      return False
+
+    p.vvv('>> D')
+    return True
+
+  def is_old(self, published, age):
+    # acc   publ    today
+    # |-----|-------|-----|   <-- acc = today - age, if publ > acc => True
+
+    today = date.today()
+    delta = timedelta(days = int(age))
+    accepted = today - delta
+
+    if datetime.strptime(published[:10], '%Y-%m-%d').date() > accepted:
+      return False
+    else:
+      return True
