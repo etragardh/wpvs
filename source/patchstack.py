@@ -76,11 +76,12 @@ class VSource(VSourceBase):
           slug,
           vuln,
           hit['cvss'],
+          hit['fix'],
+          'no' if self.is_unauth(hit['title']) else 'yes',
           repo['repo'],
           repo['installs'],
           repo['downloads'],
           hit['date'][:10],
-          'no' if self.is_unauth(hit['title']) else 'yes',
           'PS',
           ])
         bar()
@@ -185,6 +186,13 @@ class VSource(VSourceBase):
       # ID
       out['id'] = self.hash(out['cve'])
       p.vv(out['id'])
+
+      # Fix
+      try:
+        not_fixed = re.search(r'not-fixed\.svg', html)
+        out['fix'] = 'no' if not_fixed else 'yes'
+      except Exception as e:
+        out['fix'] = 'no'
 
       return out
     except Exception as e:

@@ -80,16 +80,23 @@ class VSource(VSourceBase):
           slug,
           vuln,
           hit['cvss']['score'],
+          'no' if not self.is_fixed(hit) else self.is_fixed(hit),
+          'no' if self.is_unauth(hit['title']) else 'yes',
           repo['repo'],
           repo['installs'],
           repo['downloads'],
           hit['published'][:10],
-          'no' if self.is_unauth(hit['title']) else 'yes',
           'WF',
           ])
         bar()
 
     return out
+
+  def is_fixed(self, vuln):
+    if vuln['software'][0]['patched']:
+      return vuln['software'][0]['patched_versions'][0]
+    else:
+      return False
 
   # No Cache
   def update_db(self):

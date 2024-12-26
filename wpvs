@@ -53,6 +53,5 @@ except KeyboardInterrupt:
   exit()
 
 
-head = ['Slug', 'Vuln', 'CVSS', 'Repo', 'Inst', 'DL', 'Pub', 'Auth', 'Source']
+head = ['Slug', 'Vuln', 'CVSS', 'Fix', 'Auth', 'Repo', 'Inst', 'DL', 'Pub', 'Source']
 p.table(head, out)
-
