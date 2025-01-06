@@ -40,6 +40,7 @@ class parser:
         )
         parser.add_argument(
             '--type',
+            nargs='*',
             help='What vulnerability type to include'
         )
         parser.add_argument(

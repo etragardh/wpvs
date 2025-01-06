@@ -51,7 +51,7 @@ class VSource(VSourceBase):
         continue
 
       # Type
-      if kwargs['type'] and self.get_type(vuln['title']) != kwargs['type']:
+      if kwargs['type'] and self.get_type(vuln['title']) not in kwargs['type']:
         p.vvv('E', prefix="=>")
         continue
 
