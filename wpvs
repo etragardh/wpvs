@@ -17,6 +17,7 @@ import os, shutil
 # Arguments
 parser = parser.create()
 args = parser.parse_args()
+args.debug = 1 if args.debug is None else args.debug
 
 # Print
 p = CPrint(debug=args.debug)
@@ -35,13 +36,14 @@ try:
   for source in os.listdir('source/'):
     if source in ['__pycache__'] or source.endswith('.swp') or source.endswith('.bak'):
       continue
-    p.v(f'loading: {source}')
+    p.v(f'loading: {source}, debug {args.debug}')
     sm  = SourceFileLoader("Source Module",f'source/{source}').load_module()
     source_class = sm.VSource(debug = args.debug)
     res = source_class.search(
       cvss_min=args.cvss_min,
       cvss_max=args.cvss_max,
-      unauth_only=args.unauth_only,
+      unauth=args.unauth,
+      nofix=args.nofix,
       age=args.age,
       type=args.type,
       slug=args.slug,

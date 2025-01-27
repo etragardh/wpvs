@@ -14,7 +14,7 @@ class VSourceBase(ABC):
     self.init = True
     self.debug = debug
 
-    if debug:
+    if debug is not False:
       p.enable_debug(debug)
 
   @property
@@ -35,6 +35,7 @@ class VSourceBase(ABC):
     p.v(f'Checking database timestamp: {self.db_path}')
 
     if not os.path.exists(self.db_path):
+      p.v('Updated required (no db)')
       return True
 
     #       file    accepted    today
@@ -45,13 +46,17 @@ class VSourceBase(ABC):
     modified = date.fromtimestamp(os.path.getmtime(self.db_path))
     accepted = date.fromtimestamp(os.path.getmtime(self.db_path) + 24 * 60 * 60)
 
-    res = today > accepted
+    # Since we count in whole days, we can just check if today is more than modified
+    res = today > modified #accepted
     if res:
       p.v('Updated required')
     else:
       p.v('No update required')
+      p.vv(f'today: {today}')
+      p.vv(f'modified: {modified}')
+      p.vv(f'accepted: {accepted}')
 
-    return today > accepted
+    return res
 
   def repo_info(self, slug, name, type='plugin'):
     out = {
@@ -158,34 +163,35 @@ class VSourceBase(ABC):
   def get_type(self, haystack, default = 'other'):
         
     mapper = {
-      "SQL Injection":              'SQLi',
-      "Remote Code Execution":      'RCE',
-      "Code Injection":             'CODEINJ',
-      "Cross-site Scripting":       'XSS',
-      "XSS":                        'XSS',
-      "Cross-site Request Forgery": 'CSRF',
-      "CSRF":                       'CSRF',
-      "Server-Side Request Forgery":'SSRF',
-      "SSRF":                       'SSRF',
-      "Authorization Bypass":       'AUTHBP',
-      "Authentication Bypass":      'AUTHBP',
-      "Improper Authentication":    'AUTHBP',
-      "Improper Authorization":     'AUTHBP',
-      "Missing Authorization":      'AUTHBP',
-      "Missing Authentication":     'AUTHBP',
-      "Unrestricted Upload of File":'RFI',
-      "Remote File Inclusion":      'RFI',
-      "Local File Inclusion":       'LFI',
-      "Arbitrary Folder Deletion":  'LFD',
-      "Object Injection":           'OBJINJ',
-      "Arbitrary Option Update":    'OPTUPD',
-      "Privilege Escalation":       'PRIVESC',
-      "Post Disclosure":            'DATALEAK', # Patchstack from here and down
-      "Arbitrary File Download":    'FILEDL',
-      "Arbitrary Shortcode Execution":'ARBSHCODE',
-      "Arbitrary File Upload":      'RFI',
-      "Arbitrary Directory Deletion": 'ARBDDEL',
-      "Arbitrary User Token Generation": 'AUTHBP',
+      "SQL Injection":                    'SQLi',
+      "Remote Code Execution":            'RCE',
+      "Code Injection":                   'CODEINJ',
+      "Cross-site Scripting":             'XSS',
+      "XSS":                              'XSS',
+      "Cross-site Request Forgery":       'CSRF',
+      "CSRF":                             'CSRF',
+      "Server-Side Request Forgery":      'SSRF',
+      "SSRF":                             'SSRF',
+      "Authorization Bypass":             'AUTHBP',
+      "Authentication Bypass":            'AUTHBP',
+      "Improper Authentication":          'AUTHBP',
+      "Improper Authorization":           'AUTHBP',
+      "Unrestricted Upload of File":      'RFI',
+      "Remote File Inclusion":            'RFI',
+      "Local File Inclusion":             'LFI',
+      "Local PHP Inclusion":              'LFI',
+      "Arbitrary Folder Deletion":        'LFD',
+      "Object Injection":                 'OBJINJ',
+      "Arbitrary Option Update":          'OPTUPD',
+      "Privilege Escalation":             'PRIVESC',
+      "Post Disclosure":                  'DATALEAK',
+      "Arbitrary File Download":          'FILEDL',
+      "Arbitrary Shortcode Execution":    'ARBSHCODE',
+      "Arbitrary File Upload":            'RFI',
+      "Arbitrary Directory Deletion":     'ARBDDEL',
+      "Arbitrary User Token Generation":  'AUTHBP',
+      "Missing Authorization":            'AUTHBP',
+      "Missing Authentication":           'AUTHBP',
     }
 
     for string in mapper:

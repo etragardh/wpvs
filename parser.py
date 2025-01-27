@@ -34,7 +34,12 @@ class parser:
             help='Maximum CVSS'
         )
         parser.add_argument(
-            '--unauth-only',
+            '--nofix',
+            action='store_true',
+            help='Nofix only'
+        )
+        parser.add_argument(
+            '--unauth',
             action='store_true',
             help='Unauthenticated only'
         )

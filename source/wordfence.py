@@ -11,7 +11,7 @@ class VSource(VSourceBase):
 
   def __init__(self, debug = False):
     super().__init__(debug)
-    if debug:
+    if debug is not False:
       p.enable_debug(debug)
 
   def search(self, **kwargs):
@@ -46,8 +46,13 @@ class VSource(VSourceBase):
         continue
 
       # Auth / UnAuth
-      if kwargs['unauth_only'] and not self.is_unauth(vuln['title']):
+      if kwargs['unauth'] and not self.is_unauth(vuln['title']):
         p.vvv('D', prefix="=>")
+        continue
+
+      # Nofix
+      if kwargs['nofix'] and vuln['software'][0]['patched']:
+        p.vvv('D2', prefix="=>")
         continue
 
       # Type
@@ -70,7 +75,7 @@ class VSource(VSourceBase):
         name = fullname[:20].rstrip() + '..'if len(fullname) > 20 else fullname
 
         fullslug = hit['software'][0]['slug']
-        slug = fullslug[:30].rstrip() + '..' if len(fullslug) > 30 else fullslug          
+        slug = fullslug[:60].rstrip() + '..' if len(fullslug) > 60 else fullslug          
 
         vuln = self.get_type(hit['title'])
 

@@ -39,9 +39,11 @@ class CPrint:
 
   debug_lvl = False # False | 1 | 2 | 3
   is_progress = False
+  prefix = ''
 
-  def __init__(self, debug = False, **kwargs):
-    self.version = '0.1'
+  def __init__(self, debug = False, prefix='', **kwargs):
+    self.version = '1.0'
+    self.prefix = prefix
     
     # Fix for present but not specified (--debug)
     # Set debug level
@@ -50,9 +52,12 @@ class CPrint:
     if 'other_arg' in kwargs:
       print('there were other arg') # Prepare for setting custom colors
 
-  def enable_debug(self, n=1):
+  def set_prefix(self, prefix):
+    self.prefix = prefix
+
+  def enable_debug(self, debug=1):
     # Set debug level
-    self.debug_lvl = int(n)
+    self.debug_lvl = 1 if debug == None else int(debug)
 
   def version(self):
     self.success('CPrint version: ' + self.version)
@@ -78,7 +83,7 @@ class CPrint:
       self.echo(arg, 'x', RED, kwargs)
 
   def debug(self, *args, **kwargs):
-    print('====')
+    print('====', args, kwargs)
     raise Exception("Deprecated")
 
     if not self.debug_lvl:
@@ -95,7 +100,7 @@ class CPrint:
   def vv(self, *args, **kwargs):
     if self.debug_lvl >= 2:
       for arg in args:
-        self.echo(arg, '3', CYAN, kwargs)
+        self.echo(arg, '2', CYAN, kwargs)
 
   def vvv(self, *args, **kwargs):
     if self.debug_lvl >= 3:
@@ -107,7 +112,8 @@ class CPrint:
     # Resett progress if any
     self.is_progress = False
 
-    prefix = '' if not 'prefix' in args else args['prefix']
+    prefix = self.prefix if not 'prefix' in args else args['prefix']
+    prefix = prefix + ' ' if prefix != '' else prefix
 
     # Convert bytes to str
     if isinstance(text, bytes):
@@ -119,11 +125,12 @@ class CPrint:
         for line in text.split("\n"):
           self.echo(line, x, color, {"prefix":prefix})
         return  
-      print(LIGHT_GRAY+"["+color+B+x+LIGHT_GRAY+BOFF+"] " + prefix + text + END)
+      print(LIGHT_GRAY+"["+color+B+x+LIGHT_GRAY+BOFF+"] " + LIGHT_WHITE + prefix + LIGHT_GRAY + text + END)
 
     # Handle all else:
     else:
-      print(LIGHT_GRAY+"["+color+B+x+LIGHT_GRAY+BOFF+"]" + prefix, text, END)
+      prefix = ' ' + prefix.strip() if prefix != '' else prefix
+      print(LIGHT_GRAY+"["+color+B+x+LIGHT_GRAY+BOFF+"]" + LIGHT_WHITE + prefix + LIGHT_GRAY, text, END)
 
   def table(self, head, rows):
     head = head if head else []
